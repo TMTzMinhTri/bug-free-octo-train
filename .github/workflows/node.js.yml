@@ -9,6 +9,7 @@ on:
 jobs:
   docker:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -23,6 +24,13 @@ jobs:
         uses: docker/setup-buildx-action@v2
         id: buildx
 
+      - name: Cache docker image layers
+        uses: actions/cache@v3
+        with: 
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-buildx-
+
       - name: Build and push
         uses: docker/build-push-action@v3
         id: docker_build
@@ -31,25 +39,22 @@ jobs:
           file: ./Dockerfile
           builder: ${{ steps.buildx.outputs.name }}
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/nextjs
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/nextjs:latest
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
 
       - name: verify
         run: echo ${{ steps.docker_build.outputs.digest }}
-
-      
-  # build:
-  #   runs-on: self-hosted
-
-  #   strategy:
-  #     matrix:
-  #       node-version: [16.x]
-  #   steps:
-  #   - uses: actions/checkout@v3
-  #   - name: Use Node.js ${{ matrix.node-version }}
-  #     uses: actions/setup-node@v3
-  #     with:
-  #       node-version: ${{ matrix.node-version }}
-  #       cache: 'npm'
-  #   - run: npm install
-  #   - run: npm run build
-  #   - run: npm run start
+    outputs:
+      image-digest: ${{ steps.docker_build.outputs.digest }}
+  deploy:
+    runs-on: self-hosted
+    needs: docker
+    steps: 
+      - run: docker pull ${{ secrets.DOCKERHUB_USERNAME }}/nextjs@${{ needs.docker.outputs.image-digest }}
+      - run: | 
+          if [ "$( docker container inspect -f '{{.State.Status}}' containername )" == "running" ]; then
+            docker stop containername
+          fi
+      - run: docker system prune -f
+      - run: docker run --rm -d -p 3000:3000 --name containername ${{ secrets.DOCKERHUB_USERNAME }}/nextjs@${{ needs.docker.outputs.image-digest }}
