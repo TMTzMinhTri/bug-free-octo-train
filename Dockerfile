@@ -23,6 +23,8 @@ RUN yarn build
 FROM node:16-alpine AS runner
 WORKDIR /app
 
+RUN npm install --global pm2
+
 ENV NODE_ENV production
 # Uncomment the following line in case you want to disable telemetry during runtime.
 # ENV NEXT_TELEMETRY_DISABLED 1
@@ -34,6 +36,7 @@ RUN adduser --system --uid 1001 nextjs
 # COPY --from=builder /app/next.config.js ./
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/pm2.json ./pm2.json
 
 # Automatically leverage output traces to reduce image size 
 # https://nextjs.org/docs/advanced-features/output-file-tracing
@@ -46,4 +49,4 @@ EXPOSE 3000
 
 ENV PORT 3000
 
-CMD ["node", "server.js"]
+CMD [ "pm2-runtime", "start", "pm2.json"  ]

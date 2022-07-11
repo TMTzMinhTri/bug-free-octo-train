@@ -58,3 +58,9 @@ jobs:
           fi
       - run: docker system prune -f
       - run: docker run --rm -d -p 3000:3000 --name containername ${{ secrets.DOCKERHUB_USERNAME }}/nextjs@${{ needs.docker.outputs.image-digest }}
+
+  restart_nginx: 
+    runs-on: self-hosted
+    needs: deploy
+    steps: 
+      - run: sudo service nginx reload

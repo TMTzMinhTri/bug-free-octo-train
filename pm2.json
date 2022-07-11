@@ -1,0 +1,13 @@
+{
+	"apps": [
+		{
+			"name": "nextjs-app",
+			"cwd": ".",
+			"script": "server.js",
+			"instances": "1",
+			"exec_mode": "cluster",
+			"'kill_timeout'": 5000,
+			"env": { "NODE_ENV": "production", "production": true }
+		}
+	]
+}
